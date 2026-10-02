@@ -6,6 +6,7 @@ const { pathToFileURL } = require('url');
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ALLOWED = (process.env.TELEGRAM_ALLOWED_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+const DEBUG_ALLOWED = process.env.DEBUG_ALLOWED === '1';
 const SITE_FILE = [path.resolve(__dirname, 'index.html'), path.resolve(__dirname, '..', 'index.html')].find(fs.existsSync);
 const SITE = process.env.SITE_URL || pathToFileURL(SITE_FILE).href;
 const MAX_PER_BATCH = 200;
@@ -88,6 +89,15 @@ function enqueue(job) { chain = chain.then(job).catch(e => console.error(e)); }
 async function handle(msg) {
   const chat = msg.chat.id;
   const uid = String(msg.from && msg.from.id);
+  if (DEBUG_ALLOWED && msg.text === '/debug') {
+  return say(
+    chat,
+    'DEBUG\n' +
+    'Ton ID : ' + uid + '\n' +
+    'IDs autorisés : ' + (ALLOWED.length ? ALLOWED.join(', ') : '(aucun)') + '\n' +
+    'Ton ID est autorisé : ' + (ALLOWED.includes(uid) ? 'OUI' : 'NON')
+  );
+}
   if (ALLOWED.length && !ALLOWED.includes(uid)) {
     return say(chat, 'Accès refusé. Votre identifiant Telegram : ' + uid);
   }
