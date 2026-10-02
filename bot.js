@@ -29,6 +29,14 @@ function parseNumbers(text) {
   }
   return out;
 }
+function parseTracking(text) {
+  const seen = new Set();
+  const out = [];
+  for (const t of String(text).split(/[^A-Za-z0-9]+/)) {
+    if (/^[A-Za-z0-9]{8,30}$/.test(t) && /[0-9]/.test(t) && !seen.has(t)) { seen.add(t); out.push(t); }
+  }
+  return out;
+}
 
 // Retourne { name, buffer } : un PNG si 1 numéro, sinon un ZIP
 async function runBatch(numbers) {
@@ -97,7 +105,7 @@ async function handle(msg) {
     } catch (e) { return say(chat, 'Lecture du fichier impossible : ' + e.message); }
   }
 
-  let nums = parseNumbers(raw);
+  let nums = msg.forwarded ? parseTracking(raw) : parseNumbers(raw);
   if (!nums.length) return say(chat, 'Aucun numéro de suivi détecté (6 à 30 caractères alphanumériques).');
   let note = '';
   if (nums.length > MAX_PER_BATCH) { nums = nums.slice(0, MAX_PER_BATCH); note = ' (limité à ' + MAX_PER_BATCH + ')'; }
