@@ -1,0 +1,18 @@
+{
+	"name": "colissimo-telegram-bot",
+	"main": "src/worker.js",
+	"compatibility_date": "2025-10-08",
+	"compatibility_flags": ["nodejs_compat"],
+	"observability": { "enabled": true },
+	"containers": [
+		{
+			"class_name": "LabelBot",
+			"image": "./Dockerfile",
+			"max_instances": 1
+		}
+	],
+	"durable_objects": {
+		"bindings": [{ "class_name": "LabelBot", "name": "LABEL_BOT" }]
+	},
+	"migrations": [{ "new_sqlite_classes": ["LabelBot"], "tag": "v1" }]
+}
