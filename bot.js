@@ -14,7 +14,7 @@ const API = 'https://api.telegram.org/bot' + TOKEN;
 let browser = null;
 async function getBrowser() {
   if (!browser || !browser.isConnected()) {
-    const opts = { headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] };
+    const opts = { headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-zygote'] };
     if (process.env.BROWSER_CHANNEL) opts.channel = process.env.BROWSER_CHANNEL;
     browser = await chromium.launch(opts);
   }
