@@ -2,7 +2,7 @@ import { Container, getContainer } from '@cloudflare/containers';
 
 export class LabelBot extends Container {
   defaultPort = 8080;
-  sleepAfter = '10m';
+  sleepAfter = '2m';
 }
 
 async function toContainer(env, update) {
