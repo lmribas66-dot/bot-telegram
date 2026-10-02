@@ -11,11 +11,6 @@
             "instance_type": "standard-1",
 			"max_instances": 1
 		}
-{
-  // ...
-  "vars": {
-    "DEBUG_ALLOWED": "1"
-  },
   // ...
 }
 	],
