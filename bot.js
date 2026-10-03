@@ -6,6 +6,7 @@ const { pathToFileURL } = require('url');
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ALLOWED = (process.env.TELEGRAM_ALLOWED_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+const ALLOWED_CHATS = (process.env.TELEGRAM_ALLOWED_CHATS || '').split(',').map(s => s.trim()).filter(Boolean);
 const DEBUG_ALLOWED = process.env.DEBUG_ALLOWED === '1';
 const WEBHOOK = !!process.env.WEBHOOK_MODE;
 const SITE_FILE = [path.resolve(__dirname, 'index.html'), path.resolve(__dirname, '..', 'index.html')].find(fs.existsSync);
@@ -114,11 +115,18 @@ function enqueue(job) { chain = chain.then(job).catch(e => console.error(e)); }
 async function handle(msg) {
   const chat = msg.chat.id;
   const uid = String(msg.from && msg.from.id);
+  const isGroup = msg.chat.type === 'group' || msg.chat.type === 'supergroup';
+  if (isGroup) {
+    const gtext = msg.text || msg.caption || '';
+    if (/^\/id(@\w+)?$/i.test(gtext.trim())) return say(chat, 'ID de cette discussion : ' + chat);
+    // Groupe autorisé seulement ; on ne réagit qu'aux messages contenant "Suivi", le reste de la conversation est ignoré
+    if (!ALLOWED_CHATS.includes(String(chat)) || !/Suivi/i.test(gtext)) return;
+  }
   // En mode webhook (public), une liste vide refuse tout le monde au lieu d'autoriser tout le monde
-  if (WEBHOOK && !ALLOWED.length) {
+  if (!isGroup && WEBHOOK && !ALLOWED.length) {
     return say(chat, 'Bot non configuré : TELEGRAM_ALLOWED_IDS est vide. Votre identifiant Telegram : ' + uid);
   }
-  if (ALLOWED.length && !ALLOWED.includes(uid)) {
+  if (!isGroup && ALLOWED.length && !ALLOWED.includes(uid)) {
     return say(chat, 'Accès refusé. Votre identifiant Telegram : ' + uid);
   }
   if (DEBUG_ALLOWED && msg.text === '/debug') {

@@ -89,9 +89,14 @@ const store = env => env.REMINDERS.get(env.REMINDERS.idFromName('main'));
 
 // Appelé pour chaque message reçu : programme un rappel si le message a un Suivi et une date de retour
 export async function planifier(env, msg) {
-  const allowed = (env.TELEGRAM_ALLOWED_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+  const liste = v => (v || '').split(',').map(s => s.trim()).filter(Boolean);
   const uid = String(msg.from && msg.from.id);
-  if (!allowed.includes(uid)) return;
+  const isGroup = msg.chat.type === 'group' || msg.chat.type === 'supergroup';
+  // Groupe : valable si le groupe est autorisé ; sinon seul un utilisateur autorisé programme un rappel
+  const ok = isGroup
+    ? liste(env.TELEGRAM_ALLOWED_CHATS).includes(String(msg.chat.id))
+    : liste(env.TELEGRAM_ALLOWED_IDS).includes(uid);
+  if (!ok) return;
 
   const text = msg.text || msg.caption || '';
   const suivis = parseSuivi(text);
