@@ -58,7 +58,8 @@ export default {
     }
 
     if (url.pathname === '/forward') {
-      if (!env.FORWARD_SECRET || request.headers.get('X-Forward-Secret') !== env.FORWARD_SECRET) {
+      const fwd = (env.FORWARD_SECRET || '').trim();
+      if (!fwd || request.headers.get('X-Forward-Secret') !== fwd) {
         return new Response('forbidden', { status: 403 });
       }
       const body = await request.json();
