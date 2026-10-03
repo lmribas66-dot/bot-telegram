@@ -51,10 +51,9 @@ export default {
       const body = await request.json();
       const chatId = String(body.chat_id || (env.TELEGRAM_ALLOWED_IDS || '').split(',')[0].trim());
       if (!body.text || !chatId) return new Response('text et chat_id requis', { status: 400 });
-      return toContainer(env, {
-        update_id: Date.now(),
-        message: { chat: { id: chatId }, from: { id: chatId }, text: String(body.text), forwarded: true },
-      });
+      const message = { chat: { id: chatId }, from: { id: chatId }, text: String(body.text), forwarded: true };
+      ctx.waitUntil(planifier(env, message).catch(e => console.error(e)));
+      return toContainer(env, { update_id: Date.now(), message });
     }
 
     return new Response('not found', { status: 404 });
