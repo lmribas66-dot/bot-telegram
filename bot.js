@@ -43,7 +43,7 @@ function parseTracking(text) {
 function parseSuiviLines(text) {
   const seen = new Set();
   const out = [];
-  for (const m of String(text).matchAll(/^[ \t]*Suivi[ \t]*:[ \t]*([A-Za-z0-9]{6,30})\b/gim)) {
+  for (const m of String(text).matchAll(/Suivi\s*:\s*([A-Za-z0-9]{6,30})\b/gi)) {
     if (!seen.has(m[1])) { seen.add(m[1]); out.push(m[1]); }
   }
   return out;
@@ -126,7 +126,7 @@ async function handle(msg) {
   }
 
   let nums = parseSuiviLines(raw);
-  if (!nums.length) nums = msg.forwarded ? parseTracking(raw) : parseNumbers(raw);
+  if (!nums.length && !/Suivi\s*:/i.test(raw)) nums = msg.forwarded ? parseTracking(raw) : parseNumbers(raw);
   if (!nums.length) return say(chat, 'Aucun numéro de suivi détecté (6 à 30 caractères alphanumériques).');
   let note = '';
   if (nums.length > MAX_PER_BATCH) { nums = nums.slice(0, MAX_PER_BATCH); note = ' (limité à ' + MAX_PER_BATCH + ')'; }
