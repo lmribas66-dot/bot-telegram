@@ -7,6 +7,7 @@ const { pathToFileURL } = require('url');
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ALLOWED = (process.env.TELEGRAM_ALLOWED_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
 const DEBUG_ALLOWED = process.env.DEBUG_ALLOWED === '1';
+const WEBHOOK = !!process.env.WEBHOOK_MODE;
 const SITE_FILE = [path.resolve(__dirname, 'index.html'), path.resolve(__dirname, '..', 'index.html')].find(fs.existsSync);
 const SITE = process.env.SITE_URL || pathToFileURL(SITE_FILE).href;
 const MAX_PER_BATCH = 200;
@@ -48,6 +49,19 @@ function parseSuiviLines(text) {
     if (!seen.has(m[1])) { seen.add(m[1]); out.push(m[1]); }
   }
   return out;
+}
+
+// Récupère l'article et la date limite de retour du message (lignes "Article : ..." et "Retour ... avant ...")
+function parseInfo(text) {
+  const clean = String(text).replace(/[​-‍⁠﻿­]/g, '');
+  const pick = re => {
+    const m = clean.match(re);
+    return m ? m[1].trim().slice(0, 100) : '';
+  };
+  return {
+    article: pick(/Article[ \t]*[:：][ \t]*([^\n]+)/i),
+    retour: pick(/Retour[^\n]*?avant[ \t]+(?:le[ \t]+)?([^\n]+)/i),
+  };
 }
 
 // Retourne { name, buffer } : un PNG si 1 numéro, sinon un ZIP
@@ -100,17 +114,21 @@ function enqueue(job) { chain = chain.then(job).catch(e => console.error(e)); }
 async function handle(msg) {
   const chat = msg.chat.id;
   const uid = String(msg.from && msg.from.id);
-  if (DEBUG_ALLOWED && msg.text === '/debug') {
-  return say(
-    chat,
-    'DEBUG\n' +
-    'Ton ID : ' + uid + '\n' +
-    'IDs autorisés : ' + (ALLOWED.length ? ALLOWED.join(', ') : '(aucun)') + '\n' +
-    'Ton ID est autorisé : ' + (ALLOWED.includes(uid) ? 'OUI' : 'NON')
-  );
-}
+  // En mode webhook (public), une liste vide refuse tout le monde au lieu d'autoriser tout le monde
+  if (WEBHOOK && !ALLOWED.length) {
+    return say(chat, 'Bot non configuré : TELEGRAM_ALLOWED_IDS est vide. Votre identifiant Telegram : ' + uid);
+  }
   if (ALLOWED.length && !ALLOWED.includes(uid)) {
     return say(chat, 'Accès refusé. Votre identifiant Telegram : ' + uid);
+  }
+  if (DEBUG_ALLOWED && msg.text === '/debug') {
+    return say(
+      chat,
+      'DEBUG\n' +
+      'Ton ID : ' + uid + '\n' +
+      'IDs autorisés : ' + (ALLOWED.length ? ALLOWED.join(', ') : '(aucun)') + '\n' +
+      'Ton ID est autorisé : ' + (ALLOWED.includes(uid) ? 'OUI' : 'NON')
+    );
   }
   const text = msg.text || msg.caption || '';
   if (/^\/(start|aide|help)/.test(text)) {
@@ -138,11 +156,18 @@ async function handle(msg) {
   let note = '';
   if (nums.length > MAX_PER_BATCH) { nums = nums.slice(0, MAX_PER_BATCH); note = ' (limité à ' + MAX_PER_BATCH + ')'; }
 
+  let caption = nums.length + ' étiquette(s) TEST';
+  if (nums.length === 1) {
+    const info = parseInfo(raw);
+    if (info.article) caption += '\nArticle : ' + info.article;
+    if (info.retour) caption += '\nRetour avant : ' + info.retour;
+  }
+
   await say(chat, 'Fournée de ' + nums.length + ' numéro(s) en cours' + note + ' [v3 : ' + nums.slice(0, 3).join(', ') + ']...');
   enqueue(async () => {
     try {
       const f = await runBatch(nums);
-      await sendFile(chat, f, nums.length + ' étiquette(s) TEST');
+      await sendFile(chat, f, caption);
     } catch (e) {
       console.error(e);
       await say(chat, 'Échec de la fournée : ' + e.message);
