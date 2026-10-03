@@ -13,7 +13,14 @@
 		}
 	],
 	"durable_objects": {
-		"bindings": [{ "class_name": "LabelBot", "name": "LABEL_BOT" }]
+		"bindings": [
+			{ "class_name": "LabelBot", "name": "LABEL_BOT" },
+			{ "class_name": "Reminders", "name": "REMINDERS" }
+		]
 	},
-	"migrations": [{ "new_sqlite_classes": ["LabelBot"], "tag": "v1" }]
+	"migrations": [
+		{ "new_sqlite_classes": ["LabelBot"], "tag": "v1" },
+		{ "new_sqlite_classes": ["Reminders"], "tag": "v2" }
+	],
+	"triggers": { "crons": ["0 7 * * *"] }
 }

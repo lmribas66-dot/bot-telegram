@@ -1,4 +1,7 @@
 import { Container, getContainer } from '@cloudflare/containers';
+import { planifier, envoyerRappels } from './rappel.js';
+
+export { Reminders } from './rappel.js';
 
 export class LabelBot extends Container {
   defaultPort = 8080;
@@ -24,7 +27,11 @@ async function toContainer(env, update) {
 }
 
 export default {
-  async fetch(request, env) {
+  async scheduled(controller, env, ctx) {
+    ctx.waitUntil(envoyerRappels(env));
+  },
+
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method !== 'POST') return new Response('ok');
 
@@ -32,7 +39,9 @@ export default {
       if (request.headers.get('X-Telegram-Bot-Api-Secret-Token') !== env.WEBHOOK_SECRET) {
         return new Response('forbidden', { status: 403 });
       }
-      return toContainer(env, await request.json());
+      const update = await request.json();
+      if (update.message) ctx.waitUntil(planifier(env, update.message).catch(e => console.error(e)));
+      return toContainer(env, update);
     }
 
     if (url.pathname === '/forward') {
