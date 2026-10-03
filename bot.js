@@ -43,7 +43,8 @@ function parseTracking(text) {
 function parseSuiviLines(text) {
   const seen = new Set();
   const out = [];
-  for (const m of String(text).matchAll(/Suivi\s*:\s*([A-Za-z0-9]{6,30})\b/gi)) {
+  const clean = String(text).replace(/[​-‍⁠﻿­]/g, '');
+  for (const m of clean.matchAll(/Suivi[^A-Za-z0-9:：]{0,5}[:：][^A-Za-z0-9]{0,5}([A-Za-z0-9]{6,30})/gi)) {
     if (!seen.has(m[1])) { seen.add(m[1]); out.push(m[1]); }
   }
   return out;
@@ -111,7 +112,7 @@ async function handle(msg) {
   if (ALLOWED.length && !ALLOWED.includes(uid)) {
     return say(chat, 'Accès refusé. Votre identifiant Telegram : ' + uid);
   }
-  const text = msg.text || '';
+  const text = msg.text || msg.caption || '';
   if (/^\/(start|aide|help)/.test(text)) {
     return say(chat, 'Envoyez-moi des numéros de suivi (un par ligne, ou séparés par des espaces), ou un fichier .txt. Je lance la fournée et je vous renvoie les étiquettes (PNG pour un numéro, ZIP pour plusieurs). Maximum ' + MAX_PER_BATCH + ' par envoi.');
   }
@@ -126,8 +127,14 @@ async function handle(msg) {
   }
 
   let nums = parseSuiviLines(raw);
-  if (!nums.length && !/Suivi\s*:/i.test(raw)) nums = msg.forwarded ? parseTracking(raw) : parseNumbers(raw);
-  if (!nums.length) return say(chat, 'Aucun numéro de suivi détecté (6 à 30 caractères alphanumériques).');
+  if (!nums.length && !/Suivi/i.test(raw)) nums = msg.forwarded ? parseTracking(raw) : parseNumbers(raw);
+  if (!nums.length) {
+    const i = raw.search(/Suivi/i);
+    const diag = i < 0
+      ? 'mot Suivi absent, texte de ' + raw.length + ' car., champs : ' + Object.keys(msg).join(',')
+      : Array.from(raw.slice(i, i + 24)).map(c => c.charCodeAt(0) > 126 || c.charCodeAt(0) < 32 ? '\\u' + c.charCodeAt(0).toString(16) : c).join('');
+    return say(chat, 'Aucun numéro de suivi détecté (6 à 30 caractères alphanumériques). [v4 diag : ' + diag + ']');
+  }
   let note = '';
   if (nums.length > MAX_PER_BATCH) { nums = nums.slice(0, MAX_PER_BATCH); note = ' (limité à ' + MAX_PER_BATCH + ')'; }
 
