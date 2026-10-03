@@ -66,7 +66,9 @@ export default {
       if (!body.text || !chatId) return new Response('text et chat_id requis', { status: 400 });
       const message = { chat: { id: chatId }, from: { id: chatId }, text: String(body.text), forwarded: true };
       ctx.waitUntil(planifier(env, message).catch(e => console.error(e)));
-      return toContainer(env, { update_id: Date.now(), message });
+      // Réponse immédiate : l'appelant n'attend pas le démarrage du conteneur
+      ctx.waitUntil(toContainer(env, { update_id: Date.now(), message }).catch(e => console.error(e)));
+      return new Response('accepted', { status: 202 });
     }
 
     return new Response('not found', { status: 404 });
