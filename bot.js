@@ -131,7 +131,7 @@ async function handle(msg) {
   let note = '';
   if (nums.length > MAX_PER_BATCH) { nums = nums.slice(0, MAX_PER_BATCH); note = ' (limité à ' + MAX_PER_BATCH + ')'; }
 
-  await say(chat, 'Fournée de ' + nums.length + ' numéro(s) en cours' + note + '...');
+  await say(chat, 'Fournée de ' + nums.length + ' numéro(s) en cours' + note + ' [v3 : ' + nums.slice(0, 3).join(', ') + ']...');
   enqueue(async () => {
     try {
       const f = await runBatch(nums);
