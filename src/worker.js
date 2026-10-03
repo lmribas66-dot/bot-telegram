@@ -63,9 +63,17 @@ export default {
         return new Response('forbidden', { status: 403 });
       }
       const body = await request.json();
-      const chatId = String(body.chat_id || (env.TELEGRAM_ALLOWED_IDS || '').split(',')[0].trim());
+      const liste = v => (v || '').split(',').map(s => s.trim()).filter(Boolean);
+      const ids = liste(env.TELEGRAM_ALLOWED_IDS);
+      const chats = liste(env.TELEGRAM_ALLOWED_CHATS);
+      // Sans chat_id : le premier groupe autorisé, sinon le premier utilisateur autorisé
+      const chatId = String(body.chat_id || chats[0] || ids[0] || '');
       if (!body.text || !chatId) return new Response('text et chat_id requis', { status: 400 });
-      const message = { chat: { id: chatId }, from: { id: chatId }, text: String(body.text), forwarded: true };
+      const isGroup = chats.includes(chatId);
+      if (!isGroup && !ids.includes(chatId)) return new Response('chat_id non autorise', { status: 400 });
+      const message = isGroup
+        ? { chat: { id: chatId, type: 'group' }, from: { id: chatId }, text: String(body.text), forwarded: true, group_ok: true }
+        : { chat: { id: chatId }, from: { id: chatId }, text: String(body.text), forwarded: true };
       ctx.waitUntil(planifier(env, message).catch(e => console.error(e)));
       // Réponse immédiate : l'appelant n'attend pas le démarrage du conteneur
       ctx.waitUntil(toContainer(env, { update_id: Date.now(), message }).catch(e => console.error(e)));
