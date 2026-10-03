@@ -120,7 +120,7 @@ async function handle(msg) {
     const gtext = msg.text || msg.caption || '';
     if (/^\/id(@\w+)?$/i.test(gtext.trim())) return say(chat, 'ID de cette discussion : ' + chat);
     // Groupe autorisé seulement ; on ne réagit qu'aux messages contenant "Suivi", le reste de la conversation est ignoré
-    if (!ALLOWED_CHATS.includes(String(chat)) || !/Suivi/i.test(gtext)) return;
+    if (!(msg.group_ok || ALLOWED_CHATS.includes(String(chat))) || !/Suivi/i.test(gtext)) return;
   }
   // En mode webhook (public), une liste vide refuse tout le monde au lieu d'autoriser tout le monde
   if (!isGroup && WEBHOOK && !ALLOWED.length) {

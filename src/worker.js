@@ -50,6 +50,8 @@ export default {
         if (!/^\/id(@\w+)?$/i.test(t.trim()) && !(chats.includes(String(m.chat.id)) && /Suivi/i.test(t))) {
           return new Response('ok');
         }
+        // Groupe vérifié ici : le conteneur ne dépend pas de ses variables d'environnement, qui peuvent être périmées
+        if (chats.includes(String(m.chat.id))) m.group_ok = true;
       }
       ctx.waitUntil(planifier(env, m).catch(e => console.error(e)));
       return toContainer(env, update);
