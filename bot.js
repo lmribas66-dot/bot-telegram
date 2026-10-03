@@ -39,6 +39,16 @@ function parseTracking(text) {
   return out;
 }
 
+// Lignes "Suivi: 6Y..." : ne garde que le numéro indiqué après "Suivi:"
+function parseSuiviLines(text) {
+  const seen = new Set();
+  const out = [];
+  for (const m of String(text).matchAll(/^[ \t]*Suivi[ \t]*:[ \t]*([A-Za-z0-9]{6,30})\b/gim)) {
+    if (!seen.has(m[1])) { seen.add(m[1]); out.push(m[1]); }
+  }
+  return out;
+}
+
 // Retourne { name, buffer } : un PNG si 1 numéro, sinon un ZIP
 async function runBatch(numbers) {
   const b = await getBrowser();
@@ -115,7 +125,8 @@ async function handle(msg) {
     } catch (e) { return say(chat, 'Lecture du fichier impossible : ' + e.message); }
   }
 
-  let nums = msg.forwarded ? parseTracking(raw) : parseNumbers(raw);
+  let nums = parseSuiviLines(raw);
+  if (!nums.length) nums = msg.forwarded ? parseTracking(raw) : parseNumbers(raw);
   if (!nums.length) return say(chat, 'Aucun numéro de suivi détecté (6 à 30 caractères alphanumériques).');
   let note = '';
   if (nums.length > MAX_PER_BATCH) { nums = nums.slice(0, MAX_PER_BATCH); note = ' (limité à ' + MAX_PER_BATCH + ')'; }
