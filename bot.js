@@ -109,12 +109,16 @@ async function sendFile(chat_id, f, caption) {
   await tg('sendDocument', fd);
 }
 
-// Copie de l'étiquette (PNG, un seul numéro) vers le bot principal, qui l'ajoute au dossier du tableau. Facultatif : sans MAIN_BOT_URL, ne fait rien.
+// Copie de l'étiquette (PNG, un seul numéro) vers le bot principal, qui l'ajoute au dossier du tableau.
+// Renvoie '' si tout va bien (ou si rien à faire), sinon la raison, que le groupe voit : l'étiquette elle-même est déjà partie.
 const MAIN_BOT_URL = (process.env.MAIN_BOT_URL || '').trim().replace(/\/+$/, '');
 const FORWARD_SECRET = (process.env.FORWARD_SECRET || '').trim();
 async function pushLabel(nums, f) {
+  if (nums.length !== 1) return '';
+  if (!MAIN_BOT_URL || !FORWARD_SECRET) return 'réglages absents du conteneur (' + [!MAIN_BOT_URL && 'MAIN_BOT_URL', !FORWARD_SECRET && 'FORWARD_SECRET'].filter(Boolean).join(', ') + ')';
   const png = f.buffer.length > 8 && f.buffer[0] === 0x89 && f.buffer.toString('latin1', 1, 4) === 'PNG';
-  if (!MAIN_BOT_URL || !FORWARD_SECRET || nums.length !== 1 || !png || f.buffer.length > 3 * 1024 * 1024) return;
+  if (!png) return 'l\'étiquette n\'est pas un PNG';
+  if (f.buffer.length > 2 * 1024 * 1024) return 'étiquette trop lourde (' + f.buffer.length + ' octets)';
   try {
     const r = await fetch(MAIN_BOT_URL + '/label', {
       method: 'POST',
@@ -123,7 +127,8 @@ async function pushLabel(nums, f) {
       signal: AbortSignal.timeout(20000),
     });
     console.log('pushLabel: statut', r.status);
-  } catch (e) { console.error('pushLabel', e.message); }
+    return r.ok ? '' : 'le bot principal a répondu ' + r.status;
+  } catch (e) { console.error('pushLabel', e.message); return 'envoi impossible (' + e.message + ')'; }
 }
 
 let chain = Promise.resolve();
@@ -193,7 +198,8 @@ async function handle(msg) {
     try {
       const f = await runBatch(nums);
       await sendFile(chat, f, caption);
-      await pushLabel(nums, f); // n'empêche jamais l'envoi de l'étiquette dans le groupe
+      const why = await pushLabel(nums, f); // n'empêche jamais l'envoi de l'étiquette dans le groupe
+      if (why) await say(chat, '⚠️ Étiquette non ajoutée au dossier du tableau : ' + why);
     } catch (e) {
       console.error(e);
       await say(chat, 'Échec de la fournée : ' + e.message);
