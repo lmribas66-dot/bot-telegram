@@ -17,6 +17,8 @@ async function toContainer(env, update) {
         TELEGRAM_BOT_TOKEN: env.TELEGRAM_BOT_TOKEN,
         TELEGRAM_ALLOWED_IDS: env.TELEGRAM_ALLOWED_IDS || '',
         TELEGRAM_ALLOWED_CHATS: env.TELEGRAM_ALLOWED_CHATS || '',
+        MAIN_BOT_URL: env.MAIN_BOT_URL || '',
+        FORWARD_SECRET: (env.FORWARD_SECRET || '').trim(),
       },
     },
     cancellationOptions: { portReadyTimeoutMS: 60000 },

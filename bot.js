@@ -109,6 +109,23 @@ async function sendFile(chat_id, f, caption) {
   await tg('sendDocument', fd);
 }
 
+// Copie de l'étiquette (PNG, un seul numéro) vers le bot principal, qui l'ajoute au dossier du tableau. Facultatif : sans MAIN_BOT_URL, ne fait rien.
+const MAIN_BOT_URL = (process.env.MAIN_BOT_URL || '').trim().replace(/\/+$/, '');
+const FORWARD_SECRET = (process.env.FORWARD_SECRET || '').trim();
+async function pushLabel(nums, f) {
+  const png = f.buffer.length > 8 && f.buffer[0] === 0x89 && f.buffer.toString('latin1', 1, 4) === 'PNG';
+  if (!MAIN_BOT_URL || !FORWARD_SECRET || nums.length !== 1 || !png || f.buffer.length > 3 * 1024 * 1024) return;
+  try {
+    const r = await fetch(MAIN_BOT_URL + '/label', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Forward-Secret': FORWARD_SECRET },
+      body: JSON.stringify({ suivi: nums[0], name: f.name, mime: 'image/png', data: f.buffer.toString('base64') }),
+      signal: AbortSignal.timeout(20000),
+    });
+    console.log('pushLabel: statut', r.status);
+  } catch (e) { console.error('pushLabel', e.message); }
+}
+
 let chain = Promise.resolve();
 function enqueue(job) { chain = chain.then(job).catch(e => console.error(e)); }
 
@@ -176,6 +193,7 @@ async function handle(msg) {
     try {
       const f = await runBatch(nums);
       await sendFile(chat, f, caption);
+      await pushLabel(nums, f); // n'empêche jamais l'envoi de l'étiquette dans le groupe
     } catch (e) {
       console.error(e);
       await say(chat, 'Échec de la fournée : ' + e.message);
