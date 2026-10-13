@@ -55,7 +55,7 @@ export function parseRetourDate(label, todayIso) {
   return yy === y && mm === m && dd === d ? iso : null;
 }
 
-// Un rappel par numéro de suivi, la veille de la date de retour. Un même numéro réécrit le précédent.
+// Un rappel par numéro de suivi, le JOUR de la date de retour (dépôt). Un même numéro réécrit le précédent.
 export class Reminders extends DurableObject {
   async add(rec) {
     await this.ctx.storage.put('r:' + rec.suivi, rec);
@@ -105,11 +105,11 @@ export async function planifier(env, msg) {
   const retourIso = info.retour && parseRetourDate(info.retour, todayParis());
   if (!retourIso) return;
 
-  const remindIso = addDays(retourIso, -1);
+  const remindIso = retourIso; // rappel le JOUR du dépôt (plus la veille)
   for (const suivi of suivis) {
     await store(env).add({ suivi, chat: msg.chat.id, article: info.article, retourTxt: info.retour, retourIso, remindIso });
   }
-  await tgSend(env, msg.chat.id, 'Rappel programmé la veille du retour (' + info.retour + ').');
+  await tgSend(env, msg.chat.id, 'Rappel programmé le jour du retour (' + info.retour + ').');
 }
 
 // Appelé chaque jour par le cron : envoie les rappels du jour
@@ -117,7 +117,8 @@ export async function envoyerRappels(env) {
   const today = todayParis();
   const s = store(env);
   for (const rec of await s.due(today)) {
-    const quand = rec.retourIso === today ? "aujourd'hui" : 'demain';
+    // Le rappel tombe le jour du retour ; "en retard" si un jour a ete manque (bot arrete).
+    const quand = rec.retourIso === today ? "aujourd'hui" : 'en retard';
     const lignes = ['Rappel : retour à faire ' + quand + ' (' + rec.retourTxt + ')'];
     if (rec.article) lignes.push('Article : ' + rec.article);
     lignes.push('Suivi : ' + rec.suivi);
