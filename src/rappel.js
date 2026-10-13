@@ -61,12 +61,13 @@ export class Reminders extends DurableObject {
     await this.ctx.storage.put('r:' + rec.suivi, rec);
   }
 
-  // Rappels à envoyer aujourd'hui ; supprime ceux dont la date de retour est passée
+  // Rappels à envoyer le JOUR du retour (dépôt) ; supprime ceux dont la date est passée.
+  // On se base sur retourIso (pas remindIso) : les rappels deja en file passent aussi au jour du depot.
   async due(todayIso) {
     const out = [];
     for (const [key, rec] of await this.ctx.storage.list({ prefix: 'r:' })) {
       if (rec.retourIso < todayIso) await this.ctx.storage.delete(key);
-      else if (rec.remindIso <= todayIso) out.push(rec);
+      else if (rec.retourIso <= todayIso) out.push(rec);
     }
     return out;
   }
